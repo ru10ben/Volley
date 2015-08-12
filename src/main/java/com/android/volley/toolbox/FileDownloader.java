@@ -5,7 +5,7 @@ import android.os.Looper;
 import com.android.volley.Listener;
 import com.android.volley.RequestQueue;
 import com.android.volley.error.VolleyError;
-import com.android.volley.request.DownloadRequest;
+import com.android.volley.request.FileDownloadRequest;
 
 import java.util.LinkedList;
 
@@ -150,16 +150,16 @@ public class FileDownloader {
 	/**
 	 * This method can override by developer to change download behaviour,
 	 * such as add customize headers or handle the response himself. <br/>
-	 * Note : before you override this, make sure you are understood the {@link DownloadRequest} very well.
+	 * Note : before you override this, make sure you are understood the {@link FileDownloadRequest} very well.
 	 */
-	public DownloadRequest buildRequest(String storeFilePath, String url) {
-		return new DownloadRequest(storeFilePath, url);
+	public FileDownloadRequest buildRequest(String storeFilePath, String url) {
+		return new FileDownloadRequest(storeFilePath, url);
 	}
 
 	/**
 	 * This class included all such as PAUSE, RESUME, DISCARD to manipulating download task,
 	 * it created by {@link FileDownloader#add(String, String, com.android.volley.Listener)},
-	 * offer three params to constructing {@link DownloadRequest} then perform http downloading,
+	 * offer three params to constructing {@link FileDownloadRequest} then perform http downloading,
 	 * you can check the download status whenever you want to know.
 	 */
 	public class DownloadController {
@@ -169,7 +169,7 @@ public class FileDownloader {
 		private String mUrl;
 
 		// The download request.
-		private DownloadRequest mRequest;
+		private FileDownloadRequest mRequest;
 
 		private int mStatus;
 		public static final int STATUS_WAITING = 0;

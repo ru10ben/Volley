@@ -17,6 +17,7 @@
 package com.android.volley.stack;
 
 import android.net.http.AndroidHttpClient;
+
 import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.error.AuthFailureError;
@@ -24,12 +25,19 @@ import com.android.volley.multipart.FilePart;
 import com.android.volley.multipart.MultipartEntity;
 import com.android.volley.multipart.StringPart;
 import com.android.volley.request.MultiPartRequest;
-import com.android.volley.request.MultiPartRequest.MultiPartParam;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.*;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpHead;
+import org.apache.http.client.methods.HttpOptions;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.HttpTrace;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpConnectionParams;
@@ -46,8 +54,7 @@ import java.util.Map;
  * An HttpStack that performs request over an {@link HttpClient}.
  */
 public class HttpClientStack implements HttpStack {
-    protected final HttpClient mClient;
-    
+    private final HttpClient mClient;
     private final UrlRewriter mUrlRewriter;
     
     public HttpClientStack(String userAgent) {
@@ -84,10 +91,10 @@ public class HttpClientStack implements HttpStack {
 		onPrepareRequest(httpRequest);
 		addHeaders(httpRequest, request.getHeaders());
 		HttpParams httpParams = httpRequest.getParams();
-		int timeoutMs = request.getTimeoutMs();
-		// TODO: Reevaluate this connection timeout based on more wide-scale
+
+        int timeoutMs = request.getTimeoutMs();
 		// data collection and possibly different for wifi vs. 3G.
-		HttpConnectionParams.setConnectionTimeout(httpParams, 5000);
+		HttpConnectionParams.setConnectionTimeout(httpParams, timeoutMs);
 		HttpConnectionParams.setSoTimeout(httpParams, timeoutMs);
 		return mClient.execute(httpRequest);
 	}
@@ -96,40 +103,40 @@ public class HttpClientStack implements HttpStack {
      * Creates the appropriate subclass of HttpUriRequest for passed in request.
      */
 	private HttpUriRequest createHttpRequest(Request<?> request) throws AuthFailureError, IOException {
-	    String url = request.getUrl();
+	    String requestUrl = request.getUrl();
         if (mUrlRewriter != null) {
             String rewritten = mUrlRewriter.rewriteUrl(request);
             if (rewritten == null) {
-                throw new IOException("URL blocked by rewriter: " + url);
+                throw new IOException("URL blocked by rewriter: " + requestUrl);
             }
-            url = rewritten;
+            requestUrl = rewritten;
         }
         
         switch (request.getMethod()) {
             case Method.GET:
-                return new HttpGet(request.getUrl());
+                return new HttpGet(requestUrl);
             case Method.DELETE:
-                return new HttpDelete(request.getUrl());
+                return new HttpDelete(requestUrl);
             case Method.POST: {
-                HttpPost postRequest = new HttpPost(request.getUrl());
+                HttpPost postRequest = new HttpPost(requestUrl);
                 postRequest.addHeader(HTTP.CONTENT_TYPE, request.getBodyContentType());
                 setEntityIfNonEmptyBody(postRequest, request);
                 return postRequest;
             }
             case Method.PUT: {
-                HttpPut putRequest = new HttpPut(request.getUrl());
+                HttpPut putRequest = new HttpPut(requestUrl);
                 putRequest.addHeader(HTTP.CONTENT_TYPE, request.getBodyContentType());
                 setEntityIfNonEmptyBody(putRequest, request);
                 return putRequest;
             }
             case Method.HEAD:
-                return new HttpHead(request.getUrl());
+                return new HttpHead(requestUrl);
             case Method.OPTIONS:
-                return new HttpOptions(request.getUrl());
+                return new HttpOptions(requestUrl);
             case Method.TRACE:
-                return new HttpTrace(request.getUrl());
+                return new HttpTrace(requestUrl);
             case Method.PATCH: {
-                HttpPatch patchRequest = new HttpPatch(request.getUrl());
+                HttpPatch patchRequest = new HttpPatch(requestUrl);
                 patchRequest.addHeader(HTTP.CONTENT_TYPE, request.getBodyContentType());
                 setEntityIfNonEmptyBody(patchRequest, request);
                 return patchRequest;
@@ -143,13 +150,13 @@ public class HttpClientStack implements HttpStack {
             Request<?> request) throws AuthFailureError, IOException {
         
         if (request instanceof MultiPartRequest) {
-            final Map<String, MultiPartParam> multipartParams = ((MultiPartRequest) request).getMultipartParams();
+            final Map<String, String> multipartParams = request.getParams();
             final Map<String, String> filesToUpload = ((MultiPartRequest) request).getFilesToUpload();
 
             MultipartEntity multipartEntity = new MultipartEntity();
 
-            for (String key : multipartParams.keySet()) {
-                multipartEntity.addPart(new StringPart(key, multipartParams.get(key).value));
+            for (Map.Entry<String, String> entry : multipartParams.entrySet()) {
+                multipartEntity.addPart(new StringPart(entry.getKey(), entry.getValue()));
             }
 
             for (String key : filesToUpload.keySet()) {
