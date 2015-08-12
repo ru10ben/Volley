@@ -12,11 +12,15 @@ import com.android.volley.cache.DiskCache;
 import com.android.volley.stack.HttpClientStack;
 import com.android.volley.stack.HttpStack;
 import com.android.volley.stack.HurlStack;
+import com.android.volley.stack.OkHttpStack;
 import com.android.volley.toolbox.BasicNetwork;
 import com.android.volley.toolbox.FileDownloader;
 import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.ImageLoader.ImageCache;
+import com.squareup.okhttp.OkHttpClient;
+
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.util.Log;
 
 public class Volley {
     
@@ -85,14 +89,17 @@ public class Volley {
     public static RequestQueue newRequestQueue(Context context, HttpStack stack, Cache cache, 
             int threadPoolSize, ResponseDelivery delivery) {
         if (stack == null) {
-            String userAgent=buildUserAgent(context);
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
-                stack = new HurlStack(userAgent);
-            } else {
-                // Prior to Gingerbread, HttpUrlConnection was unreliable.
-                // See: http://android-developers.blogspot.com/2011/09/androids-http-clients.html
-                stack = new HttpClientStack(userAgent);
+            try {
+                if (Class.forName("com.squareup.okhttp.OkHttpClient") != null) {
+                    stack = new OkHttpStack(new OkHttpClient());
+                }
+            } catch (ClassNotFoundException e) {
+                String userAgent=buildUserAgent(context);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
+                    stack = new HurlStack(userAgent);
+                } else {
+                    stack = new HttpClientStack(userAgent);
+                }
             }
         }
 

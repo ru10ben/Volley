@@ -24,7 +24,7 @@ import com.android.volley.error.AuthFailureError;
 import com.android.volley.error.ServerError;
 import com.android.volley.error.TimeoutError;
 import com.android.volley.error.VolleyError;
-import com.android.volley.request.DownloadRequest;
+import com.android.volley.request.FileDownloadRequest;
 
 import org.apache.http.HttpResponse;
 import java.io.IOException;
@@ -418,7 +418,7 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	/**
 	 * Handle the response for various request, normally, a request was a short and low memory-usage request,
 	 * thus we can parse the response-content as byte[] in memory.
-	 * However the {@link DownloadRequest}
+	 * However the {@link FileDownloadRequest}
 	 * itself was a large memory-usage case, that's inadvisable for parse all
 	 * response content to memory, so it had self-implement mechanism.
 	 */

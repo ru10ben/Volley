@@ -20,16 +20,16 @@ import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.error.AuthFailureError;
 import com.android.volley.request.MultiPartRequest;
-import com.android.volley.request.MultiPartRequest.MultiPartParam;
-import org.apache.http.*;
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.ProtocolVersion;
+import org.apache.http.StatusLine;
 import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.message.BasicStatusLine;
 import org.apache.http.protocol.HTTP;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -40,7 +40,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -49,6 +48,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * An {@link HttpStack} based on {@link HttpURLConnection}.
@@ -64,6 +66,7 @@ public class HurlStack implements HttpStack {
     private static final String    CRLF                             = "\r\n";
     private static final String    FORM_DATA                        = "form-data; name=\"%s\"";
     private static final String    BOUNDARY_PREFIX                  = "--";
+    private static final String    CONTENT_TYPE_PLAIN_TEXT          = "text/plain";
     private static final String    CONTENT_TYPE_OCTET_STREAM        = "application/octet-stream";
     private static final String    FILENAME                         = "filename=%s";
     private static final String    COLON_SPACE                      = ": ";
@@ -112,18 +115,19 @@ public class HurlStack implements HttpStack {
 	
     @Override
     public HttpResponse performRequest(Request<?> request) throws IOException, AuthFailureError {
-		HashMap<String, String> map = new HashMap<String, String>();
-		map.putAll(request.getHeaders());
-
-		String url = request.getUrl();
+        String requestUrl = request.getUrl();
         if (mUrlRewriter != null) {
             String rewritten = mUrlRewriter.rewriteUrl(request);
             if (rewritten == null) {
-                throw new IOException("URL blocked by rewriter: " + url);
+                throw new IOException("URL blocked by rewriter: " + requestUrl);
             }
-            url = rewritten;
+            requestUrl = rewritten;
         }
-        URL parsedUrl = new URL(url);
+
+		HashMap<String, String> map = new HashMap<String, String>();
+		map.putAll(request.getHeaders());
+
+        URL parsedUrl = new URL(requestUrl);
         HttpURLConnection connection = openConnection(parsedUrl, request);
 	        
 		if (request instanceof MultiPartRequest) {
@@ -263,10 +267,9 @@ public class HurlStack implements HttpStack {
      * @param connection The Connection to perform the multi part request
      * @param request
      * @param additionalHeaders
-     * @throws ProtocolException
      */
     private void setConnectionParametersForMultipartRequest(HttpURLConnection connection, Request<?> request, 
-            HashMap<String, String> additionalHeaders) throws IOException, ProtocolException {
+            HashMap<String, String> additionalHeaders) throws IOException, AuthFailureError {
         final String charset = ((MultiPartRequest) request).getProtocolCharset();
         final int curTime = (int) (System.currentTimeMillis() / 1000);
         final String boundary = BOUNDARY_PREFIX + curTime;
@@ -275,7 +278,7 @@ public class HurlStack implements HttpStack {
         connection.setRequestProperty(HEADER_CONTENT_TYPE, String.format(CONTENT_TYPE_MULTIPART, charset, curTime));
         connection.setChunkedStreamingMode(0);
 
-        Map<String, MultiPartParam> multipartParams = ((MultiPartRequest) request).getMultipartParams();
+        Map<String, String> multipartParams = request.getParams();
         Map<String, String> filesToUpload = ((MultiPartRequest) request).getFilesToUpload();
         PrintWriter writer = null;
         try {
@@ -283,16 +286,15 @@ public class HurlStack implements HttpStack {
             OutputStream out = connection.getOutputStream();
             writer = new PrintWriter(new OutputStreamWriter(out, charset), true);
 
-            for (String key : multipartParams.keySet()) {
-                MultiPartParam param = multipartParams.get(key);
+            for (Entry<String, String> entry : multipartParams.entrySet()) {
                 writer.append(boundary)
                         .append(CRLF)
-                        .append(String.format(HEADER_CONTENT_DISPOSITION + COLON_SPACE + FORM_DATA, key))
+                        .append(String.format(HEADER_CONTENT_DISPOSITION + COLON_SPACE + FORM_DATA, entry.getKey()))
                         .append(CRLF)
-                        .append(HEADER_CONTENT_TYPE + COLON_SPACE + param.contentType)
+                        .append(HEADER_CONTENT_TYPE + COLON_SPACE + CONTENT_TYPE_PLAIN_TEXT)
                         .append(CRLF)
                         .append(CRLF)
-                        .append(param.value)
+                        .append(entry.getValue())
                         .append(CRLF)
                         .flush();
             }
@@ -327,7 +329,7 @@ public class HurlStack implements HttpStack {
                     input = new BufferedInputStream(fis);
                     int bufferLength = 0;
 
-                    byte[] buffer = new byte[1024];
+                    byte[] buffer = new byte[4*1024];
                     while ((bufferLength = input.read(buffer)) > 0) {
                         out.write(buffer, 0, bufferLength);
                     }
