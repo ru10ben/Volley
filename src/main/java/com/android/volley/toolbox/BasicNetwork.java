@@ -25,6 +25,7 @@ import com.android.volley.error.VolleyError;
 import com.android.volley.stack.HttpStack;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
 import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.protocol.HTTP;
@@ -33,6 +34,7 @@ import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * A network performing Netroid requests over an {@link HttpStack}.
@@ -103,14 +105,6 @@ public class BasicNetwork implements Network {
 
 		long requestStart = SystemClock.elapsedRealtime();
 		while (true) {
-			// If the request was cancelled already,
-			// do not perform the network request.
-			if (request.isCanceled()) {
-				mDelivery.postCancel(request);
-				request.finish("perform-discard-cancelled");
-				throw new NetworkError(networkResponse);
-			}
-
 			byte[] responseContents = null;
 			HttpResponse httpResponse = null;
 			Map<String, String> responseHeaders = null;
@@ -120,14 +114,15 @@ public class BasicNetwork implements Network {
 				request.prepare();
 
 				httpResponse = mHttpStack.performRequest(request);
-
 				StatusLine statusLine = httpResponse.getStatusLine();
 				int statusCode = statusLine.getStatusCode();
+
+				responseHeaders = convertHeaders(httpResponse.getAllHeaders());
+
 				if (statusCode < 200 || statusCode > 299) { 
 				    throw new IOException();
 				}
 
-				responseHeaders = convertHeaders(httpResponse.getAllHeaders());
 				responseContents = request.handleResponse(httpResponse, mDelivery);
 
 				// if the request is slow, log it.
@@ -195,17 +190,18 @@ public class BasicNetwork implements Network {
      * Converts Headers[] to Map<String, String>.
      */
     private static Map<String, String> convertHeaders(Header[] headers) {
-        Map<String, String> result = new HashMap<String, String>();
-        for (Header header : headers) {
-            String key = header.getName();
-            String value = header.getValue();
-            if (result.containsKey(key)) {
-                // The same key with append value
-                value = result.get(key)+";" + value;
-            }
-            result.put(key, value);
-        }
-        return result;
+		Map<String, String> result = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+		for (Header header : headers) {
+			String key = header.getName();
+			String value = header.getValue();
+
+			// cookie has same name and append it;
+			if (result.containsKey(key)) {
+				value = result.get(key)+";" + value;
+			}
+			result.put(key, value);
+		}
+		return result;
     }
     
     
@@ -217,9 +213,4 @@ public class BasicNetwork implements Network {
 		String charset = HttpHeaderParser.getCharset(response);
 		return charset == null ? mDefaultCharset : charset;
 	}
-
-	public String getDefaultCharset() {
-		return mDefaultCharset;
-	}
-
 }

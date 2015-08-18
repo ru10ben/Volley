@@ -53,17 +53,6 @@ public class ExecutorDelivery implements ResponseDelivery {
     }
 
 	@Override
-	public void postFinish(final Request<?> request) {
-		request.addMarker("post-finish");
-		mResponsePoster.execute(new Runnable() {
-			@Override
-			public void run() {
-				request.deliverFinish();
-			}
-		});
-	}
-
-	@Override
     public void postResponse(Request<?> request, Response<?> response) {
         postResponse(request, response, null);
     }
@@ -81,6 +70,17 @@ public class ExecutorDelivery implements ResponseDelivery {
         Response<?> response = Response.error(error);
         mResponsePoster.execute(new ResponseDeliveryRunnable(request, response, null));
     }
+
+	@Override
+	public void postFinish(final Request<?> request) {
+		request.addMarker("post-finish");
+		mResponsePoster.execute(new Runnable() {
+			@Override
+			public void run() {
+				request.deliverFinish();
+			}
+		});
+	}
 
     @Override
     public void postCancel(final Request<?> request) {
@@ -106,7 +106,7 @@ public class ExecutorDelivery implements ResponseDelivery {
 
 	@Override
 	public void postUsedCache(final Request<?> request) {
-		request.addMarker("post-preexecute");
+		request.addMarker("post-usedcache");
 		mResponsePoster.execute(new Runnable() {
 			@Override
 			public void run() {
@@ -128,7 +128,7 @@ public class ExecutorDelivery implements ResponseDelivery {
 
 	@Override
 	public void postRetry(final Request<?> request) {
-		request.addMarker("post-preexecute");
+		request.addMarker("post-retry");
 		mResponsePoster.execute(new Runnable() {
 			@Override
 			public void run() {

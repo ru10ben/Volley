@@ -1,19 +1,16 @@
 package com.android.volley;
 
-import java.io.IOException;
-import java.io.InputStream;
-import android.graphics.Bitmap;
 import android.text.TextUtils;
+import com.android.volley.error.ServerError;
+import com.android.volley.toolbox.ByteArrayPool;
+import com.android.volley.toolbox.PoolingByteArrayOutputStream;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.protocol.HTTP;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.zip.GZIPInputStream;
-import java.io.ByteArrayOutputStream;
-
-import com.android.volley.error.ServerError;
-import com.android.volley.toolbox.ByteArrayPool;
-import com.android.volley.toolbox.PoolingByteArrayOutputStream;
 
 public class HttpHeaderParser {
 
@@ -96,15 +93,4 @@ public class HttpHeaderParser {
 	public static boolean isGzipContent(HttpResponse response) {
 		return TextUtils.equals(getHeader(response, "Content-Encoding"), "gzip");
 	}
-
-	public static NetworkResponse parseBitmapCacheHeaders(Bitmap bitmap) {
-        NetworkResponse response = null;
-        if(null != bitmap){
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream);
-            byte[] byteArray = stream.toByteArray();
-            response = new NetworkResponse(byteArray, HTTP.UTF_8);
-        }
-        return response;
-    }
 }
