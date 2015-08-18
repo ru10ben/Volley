@@ -18,8 +18,11 @@ package com.android.volley.toolbox;
 
 import android.os.SystemClock;
 import com.android.volley.*;
+import com.android.volley.error.AuthFailureError;
 import com.android.volley.error.NetworkError;
 import com.android.volley.error.NoConnectionError;
+import com.android.volley.error.RedirectError;
+import com.android.volley.error.ServerError;
 import com.android.volley.error.TimeoutError;
 import com.android.volley.error.VolleyError;
 import com.android.volley.stack.HttpStack;
@@ -118,16 +121,22 @@ public class BasicNetwork implements Network {
 				int statusCode = statusLine.getStatusCode();
 
 				responseHeaders = convertHeaders(httpResponse.getAllHeaders());
-
-				if (statusCode < 200 || statusCode > 299) { 
-				    throw new IOException();
+				// Handle moved resources
+				if (statusCode == HttpStatus.SC_MOVED_PERMANENTLY || statusCode == HttpStatus.SC_MOVED_TEMPORARILY) {
+					String newUrl = responseHeaders.get("Location");
+					request.setRedirectUrl(newUrl);
 				}
 
+				// Handle the response for various request
 				responseContents = request.handleResponse(httpResponse, mDelivery);
 
 				// if the request is slow, log it.
 				long requestLifetime = SystemClock.elapsedRealtime() - requestStart;
 				logSlowRequests(requestLifetime, request, responseContents, statusLine);
+
+				if (statusCode < 200 || statusCode > 299) {
+					throw new IOException();
+				}
 
 				return new NetworkResponse(statusCode, responseContents, responseHeaders, parseCharset(httpResponse));
 			} catch (SocketTimeoutException e) {
@@ -137,11 +146,33 @@ public class BasicNetwork implements Network {
 			} catch (MalformedURLException e) {
 				throw new RuntimeException("Bad URL " + request.getUrl(), e);
 			} catch (IOException e) {
-				if (httpResponse == null) throw new NoConnectionError(e);
+				if (httpResponse == null)
+					throw new NoConnectionError(e);
 
 				int statusCode = httpResponse.getStatusLine().getStatusCode();
-				VolleyLog.e("Unexpected response code %d for %s", statusCode, request.getUrl());
-				throw new NetworkError(networkResponse);
+				if (statusCode == HttpStatus.SC_MOVED_PERMANENTLY ||
+						statusCode == HttpStatus.SC_MOVED_TEMPORARILY) {
+					VolleyLog.e("Request at %s has been redirected to %s", request.getOriginUrl(), request.getUrl());
+				} else {
+					VolleyLog.e("Unexpected response code %d for %s", statusCode, request.getUrl());
+				}
+				if (responseContents != null) {
+					networkResponse = new NetworkResponse(statusCode, responseContents,
+							responseHeaders, parseCharset(httpResponse));
+					if (statusCode == HttpStatus.SC_UNAUTHORIZED ||
+							statusCode == HttpStatus.SC_FORBIDDEN) {
+						attemptRetryOnException("auth",
+								request, new AuthFailureError(networkResponse));
+					} else if (statusCode == HttpStatus.SC_MOVED_PERMANENTLY ||
+							statusCode == HttpStatus.SC_MOVED_TEMPORARILY) {
+						attemptRetryOnException("redirect",
+								request, new RedirectError(networkResponse));
+					} else {
+						throw new ServerError(networkResponse);
+					}
+				} else {
+					throw new NetworkError(e);
+				}
 			}
 		}
 	}

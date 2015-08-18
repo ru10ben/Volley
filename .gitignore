@@ -4,7 +4,6 @@ gen
 bin
 local.properties
 *.apk
-<<<<<<< HEAD
 .*.swp
 .idea
 gen-external-apklibs
@@ -20,26 +19,4 @@ build
 target
 *.iml
 .idea
-=======
-*.ap_
-
-# Files for the Dalvik VM
-*.dex
-
-# Java class files
-*.class
-
-# Generated files
-bin/
-gen/
-
-# Gradle files
-.gradle/
-build/
-/*/build/
-build/*
-
-# Local configuration file (sdk path, etc)
->>>>>>> 7394a9a1dcbecae1ab8628f930c8f15bc0a01911
 local.properties
-

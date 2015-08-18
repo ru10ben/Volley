@@ -71,6 +71,9 @@ public abstract class Request<T> implements Comparable<Request<T>> {
     /** URL of this request. */
     private final String mUrl;
 
+    /** The redirect url to use for 3xx http responses */
+    private String mRedirectUrl;
+
     /**
      * Params to be added to the request body in case of a POST 
      * or PUT request or appended to the URL in case of a GET request
@@ -251,27 +254,45 @@ public abstract class Request<T> implements Comparable<Request<T>> {
      * Returns the URL of this request.
      */
     public String getUrl() {
+        return (mRedirectUrl != null) ? mRedirectUrl : mUrl;
+    }
+
+    /**
+     * Returns the URL of the request before any redirects have occurred.
+     */
+    public String getOriginUrl() {
         return mUrl;
     }
 
+    /**
+     * Sets the redirect url to handle http responses.
+     */
+    public void setRedirectUrl(String redirectUrl) {
+        mRedirectUrl = redirectUrl;
+    }
+
 	/**
-	 * Returns the cache key for this request.
-	 * By default, this is the URL.
+	 * Returns the cache key for this request. By default, this is the URL.
 	 */
 	public String getCacheKey() {
 		return getUrl();
 	}
 
-	/** Ask if should force update. */
+	/**
+     * Ask if should force update.
+     */
 	public boolean isForceUpdate() {
 		return mForceUpdate;
 	}
 
-	/** tell {@link Network} should force update or no. */
+	/**
+     * tell {@link Network} should force update or no.
+     */
 	public Request<T> setForceUpdate(boolean forceUpdate) {
 		this.mForceUpdate = forceUpdate;
 		return this;
 	}
+
 
 	public long getCacheExpireTime() {
 		return mCacheExpireTime;
@@ -418,8 +439,7 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	/**
 	 * Handle the response for various request, normally, a request was a short and low memory-usage request,
 	 * thus we can parse the response-content as byte[] in memory.
-	 * However the {@link FileDownloadRequest}
-	 * itself was a large memory-usage case, that's inadvisable for parse all
+	 * However the {@link FileDownloadRequest} itself was a large memory-usage case, that's inadvisable for parse all
 	 * response content to memory, so it had self-implement mechanism.
 	 */
 	public byte[] handleResponse(HttpResponse response, ResponseDelivery delivery) throws IOException, ServerError {
