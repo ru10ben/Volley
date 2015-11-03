@@ -115,10 +115,6 @@ public class BasicNetwork implements Network {
 
                 httpResponse = mHttpStack.performRequest(request);
 
-                ResponseData body = httpResponse.getBody();
-                VolleyLog.d("Http response length=%d，contentType=%s，contentEncoding=%s",
-                        body.length(), body.contentType(), body.contentEncoding());
-
                 int statusCode = httpResponse.getStatusCode();
                 responseHeaders = convertHeaders(httpResponse.getHeaders());
                 // Handle moved resources
