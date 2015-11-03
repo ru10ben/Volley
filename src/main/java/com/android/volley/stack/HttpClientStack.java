@@ -17,14 +17,17 @@
 package com.android.volley.stack;
 
 import android.net.http.AndroidHttpClient;
-
 import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.error.AuthFailureError;
 import com.android.volley.multipart.FilePart;
 import com.android.volley.multipart.MultipartEntity;
 import com.android.volley.multipart.StringPart;
+import com.android.volley.net.ContentType;
+import com.android.volley.net.ResponseData;
+import com.android.volley.net.impl.HttpClientResponse;
 import com.android.volley.request.MultiPartRequest;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -45,8 +48,10 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HTTP;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,7 +61,7 @@ import java.util.Map;
 public class HttpClientStack implements HttpStack {
     private final HttpClient mClient;
     private final UrlRewriter mUrlRewriter;
-    
+
     public HttpClientStack(String userAgent) {
         this(AndroidHttpClient.newInstance(userAgent), null);
     }
@@ -64,8 +69,8 @@ public class HttpClientStack implements HttpStack {
     public HttpClientStack(HttpClient client) {
         this(client, null);
     }
-    
-	public HttpClientStack(HttpClient client, UrlRewriter urlRewriter) {
+
+    public HttpClientStack(HttpClient client, UrlRewriter urlRewriter) {
         mClient = client;
         mUrlRewriter = urlRewriter;
     }
@@ -85,25 +90,28 @@ public class HttpClientStack implements HttpStack {
         return result;
     }
 
-	@Override
-	public HttpResponse performRequest(Request<?> request) throws IOException, AuthFailureError {
-		HttpUriRequest httpRequest = createHttpRequest(request);
-		onPrepareRequest(httpRequest);
-		addHeaders(httpRequest, request.getHeaders());
-		HttpParams httpParams = httpRequest.getParams();
+    @Override
+    public com.android.volley.net.HttpResponse performRequest(Request<?> request)
+            throws IOException, AuthFailureError {
+        HttpUriRequest httpRequest = createHttpRequest(request);
+        onPrepareRequest(httpRequest);
+        addHeaders(httpRequest, request.getHeaders());
+        HttpParams httpParams = httpRequest.getParams();
 
         int timeoutMs = request.getTimeoutMs();
-		// data collection and possibly different for wifi vs. 3G.
-		HttpConnectionParams.setConnectionTimeout(httpParams, timeoutMs);
-		HttpConnectionParams.setSoTimeout(httpParams, timeoutMs);
-		return mClient.execute(httpRequest);
-	}
+        // data collection and possibly different for wifi vs. 3G.
+        HttpConnectionParams.setConnectionTimeout(httpParams, timeoutMs);
+        HttpConnectionParams.setSoTimeout(httpParams, timeoutMs);
+        //return mClient.execute(httpRequest);
+
+        return new HttpClientResponse(mClient.execute(httpRequest));
+    }
 
     /**
      * Creates the appropriate subclass of HttpUriRequest for passed in request.
      */
-	private HttpUriRequest createHttpRequest(Request<?> request) throws AuthFailureError, IOException {
-	    String requestUrl = request.getUrl();
+    private HttpUriRequest createHttpRequest(Request<?> request) throws AuthFailureError, IOException {
+        String requestUrl = request.getUrl();
         if (mUrlRewriter != null) {
             String rewritten = mUrlRewriter.rewriteUrl(request);
             if (rewritten == null) {
@@ -111,7 +119,7 @@ public class HttpClientStack implements HttpStack {
             }
             requestUrl = rewritten;
         }
-        
+
         switch (request.getMethod()) {
             case Method.GET:
                 return new HttpGet(requestUrl);
@@ -147,8 +155,8 @@ public class HttpClientStack implements HttpStack {
     }
 
     private void setEntityIfNonEmptyBody(HttpEntityEnclosingRequestBase httpRequest,
-            Request<?> request) throws AuthFailureError, IOException {
-        
+                                         Request<?> request) throws AuthFailureError, IOException {
+
         if (request instanceof MultiPartRequest) {
             final Map<String, String> multipartParams = request.getParams();
             final Map<String, String> filesToUpload = ((MultiPartRequest) request).getFilesToUpload();
@@ -161,15 +169,15 @@ public class HttpClientStack implements HttpStack {
 
             for (String key : filesToUpload.keySet()) {
                 File file = new File(filesToUpload.get(key));
-                
-                if(!file.exists()) {
+
+                if (!file.exists()) {
                     throw new IOException(String.format("File not found: %s", file.getAbsolutePath()));
                 }
-                
-                if(file.isDirectory()) {
+
+                if (file.isDirectory()) {
                     throw new IOException(String.format("File is a directory: %s", file.getAbsolutePath()));
                 }
-                
+
                 multipartEntity.addPart(new FilePart(key, file, null, null));
             }
             httpRequest.setEntity(multipartEntity);
@@ -185,39 +193,39 @@ public class HttpClientStack implements HttpStack {
 
     /**
      * Called before the request is executed using the underlying HttpClient.
-     *
+     * <p/>
      * <p>Overwrite in subclasses to augment the request.</p>
      */
     protected void onPrepareRequest(HttpUriRequest request) throws IOException {
         request.addHeader("Accept-Encoding", "gzip");
-	}
+    }
 
-	/**
-	 * The HttpPatch class does not exist in the Android framework, so this has been defined here.
-	 */
-	public static final class HttpPatch extends HttpEntityEnclosingRequestBase {
-		public final static String METHOD_NAME = "PATCH";
+    /**
+     * The HttpPatch class does not exist in the Android framework, so this has been defined here.
+     */
+    public static final class HttpPatch extends HttpEntityEnclosingRequestBase {
+        public final static String METHOD_NAME = "PATCH";
 
-		public HttpPatch() {
-			super();
-		}
+        public HttpPatch() {
+            super();
+        }
 
-		public HttpPatch(final URI uri) {
-			super();
-			setURI(uri);
-		}
+        public HttpPatch(final URI uri) {
+            super();
+            setURI(uri);
+        }
 
-		/**
-		 * @throws IllegalArgumentException if the uri is invalid.
-		 */
-		public HttpPatch(final String uri) {
-			super();
-			setURI(URI.create(uri));
-		}
+        /**
+         * @throws IllegalArgumentException if the uri is invalid.
+         */
+        public HttpPatch(final String uri) {
+            super();
+            setURI(URI.create(uri));
+        }
 
-		@Override
-		public String getMethod() {
-			return METHOD_NAME;
-		}
-	}
+        @Override
+        public String getMethod() {
+            return METHOD_NAME;
+        }
+    }
 }

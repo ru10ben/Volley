@@ -18,8 +18,7 @@ package com.android.volley.stack;
 
 import com.android.volley.Request;
 import com.android.volley.error.AuthFailureError;
-
-import org.apache.http.HttpResponse;
+import com.android.volley.net.HttpResponse;
 import java.io.IOException;
 
 /**
@@ -35,8 +34,7 @@ public interface HttpStack {
      * @param request the request to perform
      * @return the HTTP response
      */
-    public HttpResponse performRequest(Request<?> request)
-			throws IOException, AuthFailureError;
+    HttpResponse performRequest(Request<?> request) throws IOException, AuthFailureError;
     
     
     /**
@@ -47,6 +45,6 @@ public interface HttpStack {
          * Returns a URL to use instead of the provided one, or null to indicate
          * this URL should not be used at all.
          */
-        public String rewriteUrl(Request<?> request) throws IOException;
+        String rewriteUrl(Request<?> request) throws IOException;
     }
 }

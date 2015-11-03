@@ -1,14 +1,11 @@
 package com.android.volley.request;
 
 import android.text.TextUtils;
-
 import com.android.volley.*;
 import com.android.volley.error.ServerError;
 import com.android.volley.error.VolleyError;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-
+import com.android.volley.net.HttpResponse;
+import com.android.volley.net.ResponseData;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -86,8 +83,8 @@ public class FileDownloadRequest extends Request<Void> {
 	public byte[] handleResponse(HttpResponse response, ResponseDelivery delivery) throws IOException, ServerError {
 		// Content-Length might be negative when use HttpURLConnection because it default header Accept-Encoding is gzip,
 		// we can force set the Accept-Encoding as identity in prepare() method to slove this problem but also disable gzip response.
-		HttpEntity entity = response.getEntity();
-		long fileSize = entity.getContentLength();
+		ResponseData entity = response.getBody();
+		long fileSize = entity.length();
 		if (fileSize <= 0) {
 			VolleyLog.d("Response doesn't present Content-Length!");
 		}
@@ -136,7 +133,7 @@ public class FileDownloadRequest extends Request<Void> {
 		}
 
 		try {
-			InputStream in = entity.getContent();
+			InputStream in = entity.stream();
 			// Determine the response gzip encoding, support for HttpClientStack download.
 			if (HttpHeaderParser.isGzipContent(response) && !(in instanceof GZIPInputStream)) {
 				in = new GZIPInputStream(in);
@@ -158,7 +155,7 @@ public class FileDownloadRequest extends Request<Void> {
 		} finally {
 			try {
 				// Close the InputStream and release the resources by "consuming the content".
-				if (entity != null) entity.consumeContent();
+				if (entity != null) entity.close();
 			} catch (Exception e) {
 				// This can happen if there was an exception above that left the entity in
 				// an invalid state.

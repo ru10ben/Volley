@@ -24,9 +24,8 @@ import com.android.volley.error.AuthFailureError;
 import com.android.volley.error.ServerError;
 import com.android.volley.error.TimeoutError;
 import com.android.volley.error.VolleyError;
+import com.android.volley.net.HttpResponse;
 import com.android.volley.request.FileDownloadRequest;
-
-import org.apache.http.HttpResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -444,7 +443,7 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 */
 	public byte[] handleResponse(HttpResponse response, ResponseDelivery delivery) throws IOException, ServerError {
 		// Some responses such as 204s do not have content.
-		if (response.getEntity() != null) {
+		if (response != null) {
 			return HttpHeaderParser.responseToBytes(this, response, delivery);
 		} else {
 			// Add 0 byte response as a way of honestly representing a no-content request.

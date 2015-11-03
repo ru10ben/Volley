@@ -2,25 +2,16 @@ package com.android.volley.stack;
 
 import com.android.volley.Request;
 import com.android.volley.error.AuthFailureError;
+import com.android.volley.net.HttpResponse;
+import com.android.volley.net.impl.OkHttpResponse;
 import com.android.volley.request.MultiPartRequest;
 import com.squareup.okhttp.Call;
-import com.squareup.okhttp.Headers;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.MultipartBuilder;
 import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Protocol;
 import com.squareup.okhttp.RequestBody;
 import com.squareup.okhttp.Response;
-import com.squareup.okhttp.ResponseBody;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.ProtocolVersion;
-import org.apache.http.StatusLine;
-import org.apache.http.entity.BasicHttpEntity;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.message.BasicHttpResponse;
-import org.apache.http.message.BasicStatusLine;
-import org.apache.http.protocol.HTTP;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -31,6 +22,8 @@ import java.util.concurrent.TimeUnit;
  * An HttpStack that performs request over an {@link OkHttpClient}.
  */
 public class OkHttpStack implements HttpStack {
+    private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
+
     private final OkHttpClient mClient;
     private final UrlRewriter mUrlRewriter;
 
@@ -83,7 +76,9 @@ public class OkHttpStack implements HttpStack {
         Call okHttpCall = client.newCall(okHttpRequest);
         Response okHttpResponse = okHttpCall.execute();
 
-        StatusLine responseStatus = new BasicStatusLine
+        return new OkHttpResponse(okHttpResponse);
+
+        /*StatusLine responseStatus = new BasicStatusLine
                 (
                         parseProtocol(okHttpResponse.protocol()),
                         okHttpResponse.code(),
@@ -103,10 +98,10 @@ public class OkHttpStack implements HttpStack {
             }
         }
 
-        return response;
+        return response;*/
     }
 
-    private static HttpEntity entityFromOkHttpResponse(Response r) throws IOException {
+   /* private static HttpEntity entityFromOkHttpResponse(Response r) throws IOException {
         BasicHttpEntity entity = new BasicHttpEntity();
         ResponseBody body = r.body();
 
@@ -118,7 +113,7 @@ public class OkHttpStack implements HttpStack {
             entity.setContentType(body.contentType().type());
         }
         return entity;
-    }
+    }*/
 
     private static void setConnectionParametersForRequest
             (com.squareup.okhttp.Request.Builder builder, Request<?> request)
@@ -160,7 +155,7 @@ public class OkHttpStack implements HttpStack {
                 throw new IllegalStateException("Unknown method type.");
         }
     }
-
+/*
     private static ProtocolVersion parseProtocol(final Protocol p) {
         switch (p) {
             case HTTP_1_0:
@@ -174,7 +169,7 @@ public class OkHttpStack implements HttpStack {
         }
 
         throw new IllegalAccessError("Unkwown protocol");
-    }
+    }*/
 
     private static RequestBody createRequestBody(Request request) throws AuthFailureError, IOException {
         if (request instanceof MultiPartRequest) {
@@ -189,16 +184,16 @@ public class OkHttpStack implements HttpStack {
             for (String key : filesToUpload.keySet()) {
                 File file = new File(filesToUpload.get(key));
 
-                if(!file.exists()) {
+                if (!file.exists()) {
                     throw new IOException(String.format("File not found: %s", file.getAbsolutePath()));
                 }
 
-                if(file.isDirectory()) {
+                if (file.isDirectory()) {
                     throw new IOException(String.format("File is a directory: %s", file.getAbsolutePath()));
                 }
 
                 multipartBuilder.addFormDataPart(key, file.getName(), RequestBody.create(
-                        MediaType.parse(HTTP.DEFAULT_CONTENT_TYPE), file));
+                        MediaType.parse(DEFAULT_CONTENT_TYPE), file));
             }
 
             return multipartBuilder.build();

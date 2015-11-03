@@ -24,7 +24,7 @@ import com.android.volley.error.VolleyError;
 public interface Network {
 
 	/** Set the request delivery that use to post http networking callbacks. */
-	public void setDelivery(ResponseDelivery delivery);
+	void setDelivery(ResponseDelivery delivery);
 	
     /**
      * Performs the specified request.
@@ -32,5 +32,5 @@ public interface Network {
      * @return A {@link NetworkResponse} with data and caching metadata; will never be null
      * @throws VolleyError on errors
      */
-    public NetworkResponse performRequest(Request<?> request) throws VolleyError;
+    NetworkResponse performRequest(Request<?> request) throws VolleyError;
 }

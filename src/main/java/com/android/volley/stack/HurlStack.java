@@ -19,23 +19,15 @@ package com.android.volley.stack;
 import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.error.AuthFailureError;
+import com.android.volley.net.HttpResponse;
+import com.android.volley.net.impl.HttpUrlConnectionResponse;
 import com.android.volley.request.MultiPartRequest;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.ProtocolVersion;
-import org.apache.http.StatusLine;
-import org.apache.http.entity.BasicHttpEntity;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.message.BasicHttpResponse;
-import org.apache.http.message.BasicStatusLine;
-import org.apache.http.protocol.HTTP;
+
 import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -57,21 +49,21 @@ import javax.net.ssl.SSLSocketFactory;
  */
 public class HurlStack implements HttpStack {
 
-    private static final String    HEADER_CONTENT_TYPE              = "Content-Type";
-    private static final String    HEADER_USER_AGENT                = "User-Agent";
-    private static final String    HEADER_CONTENT_DISPOSITION       = "Content-Disposition";
-    private static final String    HEADER_CONTENT_TRANSFER_ENCODING = "Content-Transfer-Encoding";
-    private static final String    CONTENT_TYPE_MULTIPART           = "multipart/form-data; charset=%s; boundary=%s";
-    private static final String    BINARY                           = "binary";
-    private static final String    CRLF                             = "\r\n";
-    private static final String    FORM_DATA                        = "form-data; name=\"%s\"";
-    private static final String    BOUNDARY_PREFIX                  = "--";
-    private static final String    CONTENT_TYPE_PLAIN_TEXT          = "text/plain";
-    private static final String    CONTENT_TYPE_OCTET_STREAM        = "application/octet-stream";
-    private static final String    FILENAME                         = "filename=%s";
-    private static final String    COLON_SPACE                      = ": ";
-    private static final String    SEMICOLON_SPACE                  = "; ";
-    
+    private static final String HEADER_CONTENT_TYPE = "Content-Type";
+    private static final String HEADER_USER_AGENT = "User-Agent";
+    private static final String HEADER_CONTENT_DISPOSITION = "Content-Disposition";
+    private static final String HEADER_CONTENT_TRANSFER_ENCODING = "Content-Transfer-Encoding";
+    private static final String CONTENT_TYPE_MULTIPART = "multipart/form-data; charset=%s; boundary=%s";
+    private static final String BINARY = "binary";
+    private static final String CRLF = "\r\n";
+    private static final String FORM_DATA = "form-data; name=\"%s\"";
+    private static final String BOUNDARY_PREFIX = "--";
+    private static final String CONTENT_TYPE_PLAIN_TEXT = "text/plain";
+    private static final String CONTENT_TYPE_OCTET_STREAM = "application/octet-stream";
+    private static final String FILENAME = "filename=%s";
+    private static final String COLON_SPACE = ": ";
+    private static final String SEMICOLON_SPACE = "; ";
+
     private final String mUserAgent;
     private final UrlRewriter mUrlRewriter;
     private final SSLSocketFactory mSslSocketFactory;
@@ -79,14 +71,14 @@ public class HurlStack implements HttpStack {
     public HurlStack(String userAgent) {
         this(userAgent, null);
     }
-    
+
     public HurlStack(String userAgent, UrlRewriter urlRewriter) {
         this(userAgent, urlRewriter, null);
     }
-    
+
     /**
-     * @param urlRewriter Rewriter to use for request URLs.
-     * @param userAgent to report in your HTTP requests.
+     * @param urlRewriter      Rewriter to use for request URLs.
+     * @param userAgent        to report in your HTTP requests.
      * @param sslSocketFactory SSL factory to use for HTTPS connections.
      */
     public HurlStack(String userAgent, UrlRewriter urlRewriter, SSLSocketFactory sslSocketFactory) {
@@ -94,25 +86,22 @@ public class HurlStack implements HttpStack {
         mUrlRewriter = urlRewriter;
         mSslSocketFactory = sslSocketFactory;
     }
-    
-	 /**
+
+    /**
      * Add headers and user agent to an {@code }
-     * 
-     * @param connection
-     *            The {@linkplain HttpURLConnection} to add request headers to
-     * @param userAgent
-     *            The User Agent to identify on server
-     * @param additionalHeaders
-     *            The headers to add to the request
+     *
+     * @param connection        The {@linkplain HttpURLConnection} to add request headers to
+     * @param userAgent         The User Agent to identify on server
+     * @param additionalHeaders The headers to add to the request
      */
-    private void addHeadersToConnection(HttpURLConnection connection, String userAgent, 
-            Map<String, String> additionalHeaders) {
+    private void addHeadersToConnection(HttpURLConnection connection, String userAgent,
+                                        Map<String, String> additionalHeaders) {
         connection.setRequestProperty(HEADER_USER_AGENT, userAgent);
         for (String headerName : additionalHeaders.keySet()) {
             connection.addRequestProperty(headerName, additionalHeaders.get(headerName));
         }
     }
-	
+
     @Override
     public HttpResponse performRequest(Request<?> request) throws IOException, AuthFailureError {
         String requestUrl = request.getUrl();
@@ -124,26 +113,26 @@ public class HurlStack implements HttpStack {
             requestUrl = rewritten;
         }
 
-		HashMap<String, String> map = new HashMap<String, String>();
-		map.putAll(request.getHeaders());
+        HashMap<String, String> map = new HashMap<String, String>();
+        map.putAll(request.getHeaders());
 
         URL parsedUrl = new URL(requestUrl);
         HttpURLConnection connection = openConnection(parsedUrl, request);
-	        
-		if (request instanceof MultiPartRequest) {
+
+        if (request instanceof MultiPartRequest) {
             setConnectionParametersForMultipartRequest(connection, request, map);
         } else {
             setConnectionParametersForRequest(connection, request, map);
         }
 
-		int responseCode = connection.getResponseCode();
-		if (responseCode == -1) {
-			// -1 is returned by getResponseCode() if the response code could not be retrieved.
-			// Signal to the caller that something was wrong with the connection.
-			throw new IOException("Could not retrieve response code from HttpUrlConnection.");
-		}
+        int responseCode = connection.getResponseCode();
+        if (responseCode == -1) {
+            // -1 is returned by getResponseCode() if the response code could not be retrieved.
+            // Signal to the caller that something was wrong with the connection.
+            throw new IOException("Could not retrieve response code from HttpUrlConnection.");
+        }
 
-		StatusLine responseStatus = new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1),
+		/*StatusLine responseStatus = new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1),
                 connection.getResponseCode(), connection.getResponseMessage());
         BasicHttpResponse response = new BasicHttpResponse(responseStatus);
         response.setEntity(entityFromConnection(connection));
@@ -155,7 +144,9 @@ public class HurlStack implements HttpStack {
             }
         }
 
-        return response;
+        return response;*/
+
+        return new HttpUrlConnectionResponse(connection);
     }
 
     /**
@@ -169,15 +160,15 @@ public class HurlStack implements HttpStack {
             sb.append(";");
         }
         if (sb.length() > 0) {
-            sb.deleteCharAt(sb.length()-1);
+            sb.deleteCharAt(sb.length() - 1);
         }
         return sb.toString();
     }
-    
+
     /**
      * Initializes an {@link HttpEntity} from the given {@link HttpURLConnection}.
      * @return an HttpEntity populated with data from <code>connection</code>.
-     */
+     *//*
     private HttpEntity entityFromConnection(HttpURLConnection connection) {
         BasicHttpEntity entity = new BasicHttpEntity();
         InputStream inputStream;
@@ -191,7 +182,7 @@ public class HurlStack implements HttpStack {
         entity.setContentEncoding(connection.getContentEncoding());
         entity.setContentType(connection.getContentType());
         return entity;
-    }
+    }*/
 
     /**
      * Create an {@link HttpURLConnection} for the specified {@code url}.
@@ -203,6 +194,7 @@ public class HurlStack implements HttpStack {
 
     /**
      * Opens an {@link HttpURLConnection} with parameters.
+     *
      * @return an open connection
      */
     private HttpURLConnection openConnection(URL url, Request<?> request) throws IOException {
@@ -216,16 +208,16 @@ public class HurlStack implements HttpStack {
 
         // use caller-provided custom SslSocketFactory, if any, for HTTPS
         if ("https".equals(url.getProtocol()) && mSslSocketFactory != null) {
-            ((HttpsURLConnection)connection).setSSLSocketFactory(mSslSocketFactory);
+            ((HttpsURLConnection) connection).setSSLSocketFactory(mSslSocketFactory);
         }
 
         return connection;
     }
 
-	private void setConnectionParametersForRequest(HttpURLConnection connection, Request<?> request, 
-	        HashMap<String, String> additionalHeaders) throws IOException, AuthFailureError {
-	    
-	    addHeadersToConnection(connection, mUserAgent, additionalHeaders);
+    private void setConnectionParametersForRequest(HttpURLConnection connection, Request<?> request,
+                                                   HashMap<String, String> additionalHeaders) throws IOException, AuthFailureError {
+
+        addHeadersToConnection(connection, mUserAgent, additionalHeaders);
         switch (request.getMethod()) {
             case Method.GET:
                 // Not necessary to set the request method because connection defaults to GET but
@@ -261,15 +253,15 @@ public class HurlStack implements HttpStack {
         }
     }
 
-	 /**
+    /**
      * Perform a multipart request on a connection
-     * 
-     * @param connection The Connection to perform the multi part request
+     *
+     * @param connection        The Connection to perform the multi part request
      * @param request
      * @param additionalHeaders
      */
-    private void setConnectionParametersForMultipartRequest(HttpURLConnection connection, Request<?> request, 
-            HashMap<String, String> additionalHeaders) throws IOException, AuthFailureError {
+    private void setConnectionParametersForMultipartRequest(HttpURLConnection connection, Request<?> request,
+                                                            HashMap<String, String> additionalHeaders) throws IOException, AuthFailureError {
         final String charset = ((MultiPartRequest) request).getProtocolCharset();
         final int curTime = (int) (System.currentTimeMillis() / 1000);
         final String boundary = BOUNDARY_PREFIX + curTime;
@@ -301,12 +293,12 @@ public class HurlStack implements HttpStack {
 
             for (String key : filesToUpload.keySet()) {
                 File file = new File(filesToUpload.get(key));
-                
-                if(!file.exists()) {
+
+                if (!file.exists()) {
                     throw new IOException(String.format("File not found: %s", file.getAbsolutePath()));
                 }
-                
-                if(file.isDirectory()) {
+
+                if (file.isDirectory()) {
                     throw new IOException(String.format("File is a directory: %s", file.getAbsolutePath()));
                 }
 
@@ -329,7 +321,7 @@ public class HurlStack implements HttpStack {
                     input = new BufferedInputStream(fis);
                     int bufferLength = 0;
 
-                    byte[] buffer = new byte[4*1024];
+                    byte[] buffer = new byte[4 * 1024];
                     while ((bufferLength = input.read(buffer)) > 0) {
                         out.write(buffer, 0, bufferLength);
                     }
@@ -356,19 +348,19 @@ public class HurlStack implements HttpStack {
             }
         }
     }
-	
-    private void addBodyIfExists(HttpURLConnection connection, Request<?> request) 
+
+    private void addBodyIfExists(HttpURLConnection connection, Request<?> request)
             throws IOException, AuthFailureError {
         byte[] body = request.getBody();
         if (body != null) {
             connection.setDoOutput(true);
-            connection.addRequestProperty(HTTP.CONTENT_TYPE, request.getBodyContentType());
+            connection.addRequestProperty("Content-Type", request.getBodyContentType());
             DataOutputStream out = new DataOutputStream(connection.getOutputStream());
             out.write(body);
             out.close();
         }
     }
-    
+
     /**
      * 如果请求是https请求那么就信任所有SSL
      */
@@ -376,21 +368,29 @@ public class HurlStack implements HttpStack {
         try {
             javax.net.ssl.X509TrustManager tm = new javax.net.ssl.X509TrustManager() {
                 @Override
-                public X509Certificate[] getAcceptedIssuers() {return null;}
+                public X509Certificate[] getAcceptedIssuers() {
+                    return null;
+                }
+
                 @Override
-                public void checkServerTrusted(X509Certificate[] chain,String authType) throws CertificateException {}
+                public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                }
+
                 @Override
-                public void checkClientTrusted(X509Certificate[] chain,String authType) throws CertificateException {}
+                public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                }
             };
             // Create a trust manager that does not validate certificate chains:
-            javax.net.ssl.TrustManager[] trustAllCerts = { tm };
-            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS"); 
+            javax.net.ssl.TrustManager[] trustAllCerts = {tm};
+            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
             sc.init(null, trustAllCerts, null);
             javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            
+
             javax.net.ssl.HostnameVerifier hv = new javax.net.ssl.HostnameVerifier() {
                 @Override
-                public boolean verify(String hostname, SSLSession session) {return true;}
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
             };
             HttpsURLConnection.setDefaultHostnameVerifier(hv);
         } catch (Exception ex) {
